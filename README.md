@@ -13,10 +13,11 @@ The project reflects our goal of using AI for sustainable innovation and smarter
 
 ### Team: BatteryIQ
 
-| Name            | GitHub ID  | 
-|-----------------|------------|
-| Yuvarrunjitha   | @2024yuva  |
-| Hemalatha S     | @hema027   |
+| Name            | GitHub ID     | 
+|-----------------|---------------|
+| Vijey Abinessh  | @VijeyAbinessh|
+| Yuvarrunjitha   | @2024yuva     |
+| Hemalatha S     | @hema027      |
 
 > Built collaboratively with a focus on real-world impact and sustainable AI.
 
