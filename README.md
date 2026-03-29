@@ -4,7 +4,23 @@ BatteryIQ is an end-to-end machine learning system that predicts the **Remaining
 It enables early detection of degradation and supports predictive maintenance in energy systems.
 
 ---
+## Built for Girls in Code — 2023 AI Challenge  
 
+As part of the Girls in Code 2023 AI Challenge, we built BatteryIQ to address real-world challenges in battery degradation and energy efficiency.  
+The project reflects our goal of using AI for sustainable innovation and smarter energy systems.
+
+---
+
+### Team: BatteryIQ
+
+| Name            | GitHub ID  | 
+|-----------------|------------|
+| Yuvarrunjitha   | @2024yuva  |
+| Hemalatha S     | @hema027   |
+
+> Built collaboratively with a focus on real-world impact and sustainable AI.
+
+---
 ## Problem Statement
 
 Battery degradation leads to unexpected failures, safety risks, and increased costs in electric vehicles and energy storage systems.
