@@ -1,0 +1,1622 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>BatteryIQ — RUL Prediction</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap"
+    rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #04080d;
+      --bg2: #080f18;
+      --card: #0b1520;
+      --border: #162436;
+      --accent: #00d4ff;
+      --green: #00ff9d;
+      --orange: #ff6b35;
+      --warn: #ffb800;
+      --red: #ff3b5c;
+      --text: #dff0fb;
+      --muted: #4a7090;
+      --fh: 'Syne', sans-serif;
+      --fm: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0
+    }
+
+    html,
+    body {
+      height: 100%;
+      overflow: hidden
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--fm);
+      display: flex
+    }
+
+    /* grid bg */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background-image: linear-gradient(rgba(0, 212, 255, .025) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 212, 255, .025) 1px, transparent 1px);
+      background-size: 48px 48px
+    }
+
+    /* orbs */
+    .orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(100px);
+      opacity: .1;
+      pointer-events: none;
+      z-index: 0
+    }
+
+    .o1 {
+      width: 600px;
+      height: 600px;
+      background: var(--accent);
+      top: -200px;
+      left: -200px
+    }
+
+    .o2 {
+      width: 400px;
+      height: 400px;
+      background: var(--green);
+      bottom: -150px;
+      right: -100px
+    }
+
+    .o3 {
+      width: 250px;
+      height: 250px;
+      background: var(--orange);
+      top: 50%;
+      left: 55%
+    }
+
+    /* ── SIDEBAR ── */
+    .sb {
+      position: relative;
+      z-index: 2;
+      width: 220px;
+      height: 100vh;
+      background: rgba(8, 15, 24, .95);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+      backdrop-filter: blur(24px)
+    }
+
+    .sb-logo {
+      padding: 22px 20px 20px;
+      border-bottom: 1px solid var(--border)
+    }
+
+    .sb-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent), var(--green));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      margin-bottom: 8px
+    }
+
+    .sb-logo h1 {
+      font-family: var(--fh);
+      font-size: 17px;
+      font-weight: 800;
+      letter-spacing: -.3px
+    }
+
+    .sb-logo small {
+      font-size: 9px;
+      color: var(--muted);
+      letter-spacing: 2px;
+      text-transform: uppercase
+    }
+
+    .sb-nav {
+      padding: 16px 10px;
+      flex: 1
+    }
+
+    .nl {
+      font-size: 9px;
+      color: var(--muted);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      padding: 0 10px;
+      margin: 14px 0 5px
+    }
+
+    .ni {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 9px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 11px;
+      color: var(--muted);
+      transition: all .18s;
+      border: 1px solid transparent;
+      margin-bottom: 2px
+    }
+
+    .ni:hover {
+      background: rgba(0, 212, 255, .06);
+      color: var(--text)
+    }
+
+    .ni.on {
+      background: rgba(0, 212, 255, .1);
+      border-color: rgba(0, 212, 255, .2);
+      color: var(--accent)
+    }
+
+    .ni .ic {
+      width: 16px;
+      text-align: center;
+      font-size: 13px
+    }
+
+    .nb {
+      margin-left: auto;
+      background: var(--accent);
+      color: var(--bg);
+      font-size: 9px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      font-weight: 700
+    }
+
+    .sb-foot {
+      padding: 14px 20px;
+      border-top: 1px solid var(--border);
+      font-size: 10px;
+      color: var(--muted)
+    }
+
+    .dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      margin-right: 6px;
+      vertical-align: middle
+    }
+
+    .dot.on {
+      background: var(--green);
+      animation: blink 2s infinite
+    }
+
+    .dot.off {
+      background: var(--muted)
+    }
+
+    @keyframes blink {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: .3
+      }
+    }
+
+    /* ── MAIN ── */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+      position: relative;
+      z-index: 1
+    }
+
+    .topbar {
+      padding: 14px 28px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(4, 8, 13, .85);
+      backdrop-filter: blur(20px);
+      flex-shrink: 0
+    }
+
+    .tb-title {
+      font-family: var(--fh);
+      font-size: 14px;
+      font-weight: 700
+    }
+
+    .tb-right {
+      display: flex;
+      align-items: center;
+      gap: 10px
+    }
+
+    .tb-status {
+      font-size: 10px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border)
+    }
+
+    .tb-status.connected {
+      border-color: rgba(0, 255, 157, .3);
+      color: var(--green);
+      background: rgba(0, 255, 157, .07)
+    }
+
+    .tb-status.sim {
+      border-color: rgba(255, 184, 0, .3);
+      color: var(--warn);
+      background: rgba(255, 184, 0, .07)
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: none;
+      font-family: var(--fm);
+      font-size: 11px;
+      cursor: pointer;
+      transition: all .18s;
+      font-weight: 500
+    }
+
+    .btn-p {
+      background: var(--accent);
+      color: var(--bg)
+    }
+
+    .btn-p:hover {
+      background: #33ddff
+    }
+
+    .btn-g {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border)
+    }
+
+    .btn-g:hover {
+      border-color: var(--accent);
+      color: var(--accent)
+    }
+
+    .btn-run {
+      background: var(--green);
+      color: var(--bg);
+      font-weight: 700
+    }
+
+    .btn-run:hover {
+      background: #33ffbb
+    }
+
+    /* pages */
+    .pages {
+      flex: 1;
+      overflow-y: scroll;
+      scrollbar-gutter: stable;
+      overflow-x: hidden
+    }
+
+    .page {
+      display: none;
+      padding: 24px 28px;
+      animation: fi .25s ease
+    }
+
+    .page.on {
+      display: block
+    }
+
+    @keyframes fi {
+      from {
+        opacity: 0;
+        transform: translateY(6px)
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0)
+      }
+    }
+
+    /* cards */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      transition: border-color .25s
+    }
+
+    .card:hover {
+      border-color: rgba(0, 212, 255, .12)
+    }
+
+    .ch {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px
+    }
+
+    .ct {
+      font-family: var(--fh);
+      font-size: 13px;
+      font-weight: 700
+    }
+
+    .cb {
+      font-size: 9px;
+      padding: 3px 9px;
+      border-radius: 20px;
+      background: rgba(0, 212, 255, .1);
+      color: var(--accent);
+      letter-spacing: 1px
+    }
+
+    /* stat row */
+    .sr {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 22px
+    }
+
+    .sc {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      padding: 18px;
+      position: relative;
+      overflow: hidden;
+      transition: transform .2s
+    }
+
+    .sc:hover {
+      transform: translateY(-2px)
+    }
+
+    .sc::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--ac, var(--accent)), transparent)
+    }
+
+    .sc.g {
+      --ac: var(--green)
+    }
+
+    .sc.o {
+      --ac: var(--orange)
+    }
+
+    .sc.r {
+      --ac: var(--red)
+    }
+
+    .sl {
+      font-size: 9px;
+      color: var(--muted);
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      margin-bottom: 8px
+    }
+
+    .sv {
+      font-family: var(--fh);
+      font-size: 30px;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 4px
+    }
+
+    .ss {
+      font-size: 9px;
+      color: var(--muted)
+    }
+
+    .sbadge {
+      display: inline-flex;
+      font-size: 9px;
+      padding: 3px 8px;
+      border-radius: 20px;
+      margin-top: 7px
+    }
+
+    .sbadge.g {
+      background: rgba(0, 255, 157, .1);
+      color: var(--green)
+    }
+
+    .sbadge.w {
+      background: rgba(255, 184, 0, .1);
+      color: var(--warn)
+    }
+
+    .sbadge.r {
+      background: rgba(255, 59, 92, .1);
+      color: var(--red)
+    }
+
+    /* grids */
+    .g2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-bottom: 18px
+    }
+
+    .g31 {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 18px;
+      margin-bottom: 18px
+    }
+
+    /* chart */
+    .ca {
+      height: 180px;
+      width: 100%;
+      position: relative
+    }
+
+    .ca svg {
+      width: 100%;
+      height: 100%
+    }
+
+    /* form */
+    .fg {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px
+    }
+
+    .fgrp {
+      display: flex;
+      flex-direction: column;
+      gap: 5px
+    }
+
+    .flbl {
+      font-size: 9px;
+      color: var(--muted);
+      letter-spacing: 1.5px;
+      text-transform: uppercase
+    }
+
+    .finp {
+      background: rgba(0, 0, 0, .35);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 12px;
+      color: var(--text);
+      font-family: var(--fm);
+      font-size: 12px;
+      outline: none;
+      transition: border-color .2s;
+      width: 100%
+    }
+
+    .finp:focus {
+      border-color: var(--accent)
+    }
+
+    /* prediction output */
+    .po {
+      background: rgba(0, 255, 157, .04);
+      border: 1px solid rgba(0, 255, 157, .15);
+      border-radius: 12px;
+      padding: 18px;
+      margin-top: 14px;
+      display: none
+    }
+
+    .po.show {
+      display: block;
+      animation: fi .3s ease
+    }
+
+    .pv {
+      font-family: var(--fh);
+      font-size: 44px;
+      font-weight: 800;
+      color: var(--green);
+      line-height: 1
+    }
+
+    .pm {
+      display: flex;
+      gap: 18px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+      font-size: 10px
+    }
+
+    .pm span {
+      color: var(--muted)
+    }
+
+    /* battery */
+    .bwrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 10px
+    }
+
+    .btip {
+      width: 28px;
+      height: 7px;
+      background: var(--border);
+      border-radius: 4px 4px 0 0;
+      margin: 0 auto -2px;
+      z-index: 1;
+      position: relative
+    }
+
+    .bouter {
+      width: 72px;
+      height: 148px;
+      border: 3px solid var(--border);
+      border-radius: 10px;
+      position: relative;
+      overflow: hidden;
+      background: rgba(0, 0, 0, .3)
+    }
+
+    .bfill {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      transition: height 1.2s cubic-bezier(.4, 0, .2, 1), background 1s;
+      border-radius: 0 0 7px 7px
+    }
+
+    .bpct {
+      font-family: var(--fh);
+      font-size: 20px;
+      font-weight: 800;
+      margin-top: 10px;
+      text-align: center
+    }
+
+    .blbl {
+      font-size: 9px;
+      color: var(--muted);
+      text-align: center;
+      margin-top: 3px
+    }
+
+    /* table */
+    .dt {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px
+    }
+
+    .dt th {
+      text-align: left;
+      padding: 8px 12px;
+      font-size: 9px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border)
+    }
+
+    .dt td {
+      padding: 10px 12px;
+      border-bottom: 1px solid rgba(22, 36, 54, .6);
+      vertical-align: middle
+    }
+
+    .dt tr:last-child td {
+      border-bottom: none
+    }
+
+    .dt tr:hover td {
+      background: rgba(0, 212, 255, .025)
+    }
+
+    .rscroll {
+      max-height: 280px;
+      overflow-y: scroll;
+      overflow-x: auto;
+      scrollbar-gutter: stable;
+    }
+
+    .hbar {
+      height: 4px;
+      border-radius: 2px;
+      background: var(--border);
+      flex: 1;
+      overflow: hidden
+    }
+
+    .hbf {
+      height: 100%;
+      border-radius: 2px;
+      transition: width .7s
+    }
+
+    /* log */
+    .logp {
+      background: rgba(0, 0, 0, .4);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      height: 140px;
+      overflow-y: auto;
+      font-size: 10px;
+      line-height: 1.8
+    }
+
+    .ll {
+      display: flex;
+      gap: 8px
+    }
+
+    .lt {
+      color: var(--muted);
+      flex-shrink: 0
+    }
+
+    .lm.i {
+      color: var(--accent)
+    }
+
+    .lm.s {
+      color: var(--green)
+    }
+
+    .lm.w {
+      color: var(--warn)
+    }
+
+    .lm.e {
+      color: var(--red)
+    }
+
+    /* range */
+    input[type=range] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 100%;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer
+    }
+
+    input[type=range]::-webkit-slider-thumb {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer
+    }
+
+    /* alert */
+    .alert {
+      padding: 10px 14px;
+      border-radius: 9px;
+      font-size: 11px;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px
+    }
+
+    .alert.i {
+      background: rgba(0, 212, 255, .06);
+      border: 1px solid rgba(0, 212, 255, .15);
+      color: var(--accent)
+    }
+
+    .alert.s {
+      background: rgba(0, 255, 157, .06);
+      border: 1px solid rgba(0, 255, 157, .15);
+      color: var(--green)
+    }
+
+    .alert.w {
+      background: rgba(255, 184, 0, .06);
+      border: 1px solid rgba(255, 184, 0, .15);
+      color: var(--warn)
+    }
+
+    /* connect banner */
+    .cbanner {
+      background: linear-gradient(135deg, rgba(0, 212, 255, .07), rgba(0, 255, 157, .04));
+      border: 1px solid rgba(0, 212, 255, .18);
+      border-radius: 14px;
+      padding: 20px 24px;
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 20px
+    }
+
+    .cbi {
+      width: 44px;
+      height: 44px;
+      border-radius: 11px;
+      background: rgba(0, 212, 255, .1);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0
+    }
+
+    /* scrollbar */
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--accent) transparent;
+    }
+
+    ::-webkit-scrollbar {
+      width: 10px
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(0, 212, 255, .55);
+      border-radius: 8px;
+      border: 2px solid transparent;
+      background-clip: content-box
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(0, 212, 255, .8);
+      background-clip: content-box
+    }
+
+    /* spinner */
+    .spin {
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: sp .6s linear infinite;
+      display: inline-block;
+      vertical-align: middle
+    }
+
+    @keyframes sp {
+      to {
+        transform: rotate(360deg)
+      }
+    }
+
+    /* upload */
+    .upz {
+      border: 2px dashed var(--border);
+      border-radius: 14px;
+      padding: 36px;
+      text-align: center;
+      cursor: pointer;
+      transition: all .25s;
+      background: rgba(0, 0, 0, .15);
+      margin-bottom: 16px
+    }
+
+    .upz:hover,
+    .upz.dv {
+      border-color: var(--accent);
+      background: rgba(0, 212, 255, .03)
+    }
+
+    /* feature bar */
+    .fb {
+      margin-bottom: 7px
+    }
+
+    .fbr {
+      display: flex;
+      justify-content: space-between;
+      font-size: 9px;
+      margin-bottom: 3px
+    }
+
+    .fbt {
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px
+    }
+
+    .fbf {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--green));
+      border-radius: 2px;
+      transition: width .7s
+    }
+
+    @media(max-width:860px) {
+      .sb {
+        display: none
+      }
+
+      .sr {
+        grid-template-columns: 1fr 1fr
+      }
+
+      .g2,
+      .g31 {
+        grid-template-columns: 1fr
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="orb o1"></div>
+  <div class="orb o2"></div>
+  <div class="orb o3"></div>
+
+  <!-- SIDEBAR -->
+  <aside class="sb">
+    <div class="sb-logo">
+      <div class="sb-icon">⚡</div>
+      <h1>BatteryIQ</h1>
+      <small>RUL Prediction System</small>
+    </div>
+    <nav class="sb-nav">
+      <div class="nl">Main</div>
+      <div class="ni on" onclick="go('dashboard',this)"><span class="ic">◈</span>Dashboard</div>
+      <div class="ni" onclick="go('predict',this)"><span class="ic">⟁</span>Predict RUL</div>
+      <div class="ni" onclick="go('analysis',this)"><span class="ic">◎</span>IC Analysis<span class="nb">NEW</span>
+      </div>
+      <div class="ni" onclick="go('data',this)"><span class="ic">◻</span>Data Upload</div>
+      <div class="nl">Insights</div>
+      <div class="ni" onclick="go('results',this)"><span class="ic">▣</span>Results</div>
+    </nav>
+    <div class="sb-foot">
+      <div><span class="dot off" id="sdot"></span><span id="slbl">Disconnected</span></div>
+      <div style="margin-top:5px;font-size:9px">SDG 7 · Clean Energy · 2030</div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div class="tb-title" id="ptitle">Dashboard</div>
+      <div class="tb-right">
+        <div class="tb-status sim" id="tbstat">Simulation mode</div>
+        <button class="btn btn-run"
+          onclick="go('predict',document.querySelectorAll('.ni')[1]);setTimeout(doPredict,200)">▶ Run
+          Prediction</button>
+      </div>
+    </div>
+
+    <div class="pages">
+
+      <!-- ══ DASHBOARD ══ -->
+      <div class="page on" id="page-dashboard">
+        <div class="sr">
+          <div class="sc">
+            <div class="sl">Model RMSE</div>
+            <div class="sv" style="color:var(--accent)">2.26</div>
+            <div class="ss">cycles error</div>
+            <div class="sbadge g">↓ Excellent</div>
+          </div>
+          <div class="sc g">
+            <div class="sl">Model MAE</div>
+            <div class="sv" style="color:var(--green)">1.75</div>
+            <div class="ss">mean absolute error</div>
+            <div class="sbadge g">↓ &lt;2% relative</div>
+          </div>
+          <div class="sc o">
+            <div class="sl">Cells Monitored</div>
+            <div class="sv" style="color:var(--orange)">4</div>
+            <div class="ss">Li-ion 18650 cells</div>
+            <div class="sbadge w">⚡ NASA Dataset</div>
+          </div>
+          <div class="sc r">
+            <div class="sl">Avg EOL Cycle</div>
+            <div class="sv" style="color:var(--red)">109</div>
+            <div class="ss">at 70% capacity</div>
+            <div class="sbadge r">⚠ EOL threshold</div>
+          </div>
+        </div>
+
+        <div class="g31">
+          <div class="card">
+            <div class="ch">
+              <div class="ct">Capacity Degradation — All Cells</div>
+              <div class="cb">LIVE DATA</div>
+            </div>
+            <div class="ca"><svg id="degSvg" viewBox="0 0 520 170" preserveAspectRatio="none">
+                <line x1="0" y1="126" x2="520" y2="126" stroke="#ff3b5c" stroke-width="1" stroke-dasharray="6,4"
+                  opacity=".5" />
+                <text x="6" y="122" fill="#ff3b5c" font-size="8" opacity=".7">EOL 70%</text>
+                <polyline id="dl0" fill="none" stroke="#00d4ff" stroke-width="2" />
+                <polyline id="dl1" fill="none" stroke="#00ff9d" stroke-width="2" opacity=".85" />
+                <polyline id="dl2" fill="none" stroke="#ff6b35" stroke-width="1.5" opacity=".75" />
+                <polyline id="dl3" fill="none" stroke="#ffb800" stroke-width="1.5" opacity=".75" />
+                <line x1="0" y1="165" x2="520" y2="165" stroke="#162436" stroke-width="1" />
+              </svg></div>
+            <div style="display:flex;gap:14px;margin-top:10px;font-size:9px;flex-wrap:wrap">
+              <span style="color:#00d4ff">— Cell B0005 (EOL:112)</span>
+              <span style="color:#00ff9d">— Cell B0006 (EOL:111)</span>
+              <span style="color:#ff6b35">— Cell B0007 (EOL:105)</span>
+              <span style="color:#ffb800">— Cell B0018 (EOL:105)</span>
+            </div>
+          </div>
+          <div class="card">
+            <div class="ch">
+              <div class="ct">Cell Health</div>
+              <div class="cb" id="cylab">CYCLE 1</div>
+            </div>
+            <div class="bwrap">
+              <div class="btip"></div>
+              <div class="bouter">
+                <div class="bfill" id="bfill" style="height:85%;background:linear-gradient(to top,#00ff9d,#00d4ff)">
+                </div>
+              </div>
+              <div class="bpct" id="bpct">85%</div>
+              <div class="blbl">State of Health</div>
+              <div style="margin-top:14px;width:100%">
+                <div
+                  style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-bottom:5px">
+                  <span>Predicted RUL</span><span id="brul">— cycles</span>
+                </div>
+                <input type="range" min="1" max="168" value="1" id="cyslider" oninput="updateBatt(this.value)" />
+                <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-top:3px">
+                  <span>Cycle 1</span><span>Cycle 168</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-bottom:18px">
+          <div class="ch">
+            <div class="ct">Actual vs Predicted RUL — Test Cell</div>
+            <div style="display:flex;gap:14px;font-size:9px"><span style="color:var(--accent)">— Actual</span><span
+                style="color:var(--orange)">-- Predicted</span></div>
+          </div>
+          <div class="ca" style="height:150px"><svg id="rulSvg" viewBox="0 0 700 140" preserveAspectRatio="none">
+              <polyline id="ral" fill="none" stroke="#00d4ff" stroke-width="2" />
+              <polyline id="rpl" fill="none" stroke="#ff6b35" stroke-width="1.5" stroke-dasharray="5,3" />
+              <line x1="0" y1="132" x2="700" y2="132" stroke="#162436" stroke-width="1" />
+            </svg></div>
+          <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-top:6px">
+            <span>Cycle 11</span><span>Sample Index →</span><span>Cycle 168</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="ch">
+            <div class="ct">Cell Health Summary</div>
+            <button class="btn btn-g" style="font-size:10px;padding:6px 12px"
+              onclick="go('data',document.querySelectorAll('.ni')[3])">+ Add Cell</button>
+          </div>
+          <table class="dt">
+            <thead>
+              <tr>
+                <th>Cell ID</th>
+                <th>EOL Cycle</th>
+                <th>Capacity (Ah)</th>
+                <th>Health</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="ctb"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ══ PREDICT ══ -->
+      <div class="page" id="page-predict">
+        <div class="alert i">⚡ Enter battery parameters below — predictions use the onboard estimator.</div>
+        <div class="g2">
+          <div class="card">
+            <div class="ch">
+              <div class="ct">Input Parameters</div>
+              <div class="cb">MANUAL ENTRY</div>
+            </div>
+            <div class="fg">
+              <div class="fgrp"><label class="flbl">Voltage Mean (V)</label><input class="finp" id="iv" type="number"
+                  value="3.68" step="0.01" /></div>
+              <div class="fgrp"><label class="flbl">Voltage Std</label><input class="finp" id="ivs" type="number"
+                  value="0.35" step="0.01" /></div>
+              <div class="fgrp"><label class="flbl">Current Mean (A)</label><input class="finp" id="ic2" type="number"
+                  value="1.42" step="0.01" /></div>
+              <div class="fgrp"><label class="flbl">Current Std</label><input class="finp" id="ics" type="number"
+                  value="0.52" step="0.01" /></div>
+              <div class="fgrp"><label class="flbl">Temperature Mean (°C)</label><input class="finp" id="it"
+                  type="number" value="27.4" step="0.1" /></div>
+              <div class="fgrp"><label class="flbl">Temperature Max (°C)</label><input class="finp" id="itm"
+                  type="number" value="35.2" step="0.1" /></div>
+              <div class="fgrp"><label class="flbl">Capacity (Ah)</label><input class="finp" id="icap" type="number"
+                  value="1.78" step="0.01" /></div>
+              <div class="fgrp"><label class="flbl">Current Cycle #</label><input class="finp" id="icy" type="number"
+                  value="45" step="1" min="1" /></div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:16px">
+              <button class="btn btn-run" style="flex:1" onclick="doPredict()">▶ Predict RUL</button>
+              <button class="btn btn-g" onclick="rndm()">⟳ Random</button>
+            </div>
+            <div class="po" id="po">
+              <div style="font-size:9px;color:var(--muted);margin-bottom:6px;letter-spacing:1px">PREDICTED REMAINING
+                USEFUL LIFE</div>
+              <div><span class="pv" id="pval">—</span><span
+                  style="font-size:13px;color:var(--muted);margin-left:6px">cycles</span></div>
+              <div class="pm">
+                <div><span>Confidence: </span><strong id="pconf">—</strong></div>
+                <div><span>SOH: </span><strong id="psoh">—</strong></div>
+                <div><span>Est. EOL: </span><strong id="peol">—</strong></div>
+                <div><span>Status: </span><strong id="pstat">—</strong></div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="card" style="margin-bottom:16px">
+              <div class="ch">
+                <div class="ct">IC Curve Preview</div>
+                <div class="cb">dQ/dV</div>
+              </div>
+              <div class="ca" style="height:140px"><svg id="icSvg" viewBox="0 0 300 130" preserveAspectRatio="none">
+                  <polyline id="icl" fill="none" stroke="#00ff9d" stroke-width="2" />
+                  <circle id="icp" r="4" fill="#ff3b5c" />
+                  <line x1="0" y1="122" x2="300" y2="122" stroke="#162436" stroke-width="1" />
+                </svg></div>
+              <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--muted);margin-top:6px">
+                <span>3.0V</span><span>Voltage →</span><span>4.2V</span>
+              </div>
+            </div>
+            <div class="card">
+              <div class="ch">
+                <div class="ct">Feature Importance</div>
+              </div>
+              <div id="fimp"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ IC ANALYSIS ══ -->
+    <div class="page" id="page-analysis">
+      <div class="alert s">◎ IC curves detect degradation 20–30 cycles before capacity drop is visible</div>
+      <div class="g2" style="margin-bottom:16px">
+        <div class="card">
+          <div class="ch">
+            <div class="ct">IC Peak Height vs Cycle</div>
+            <div class="cb">DEGRADATION</div>
+          </div>
+          <div class="ca" style="height:160px"><svg viewBox="0 0 400 150" preserveAspectRatio="none"
+              style="width:100%;height:100%">
+              <polyline id="iphL" fill="none" stroke="#7c3aed" stroke-width="2" />
+              <line x1="0" y1="142" x2="400" y2="142" stroke="#162436" stroke-width="1" />
+            </svg></div>
+        </div>
+        <div class="card">
+          <div class="ch">
+            <div class="ct">IC Peak Voltage Shift</div>
+            <div class="cb">SHIFT</div>
+          </div>
+          <div class="ca" style="height:160px"><svg viewBox="0 0 400 150" preserveAspectRatio="none"
+              style="width:100%;height:100%">
+              <polyline id="ipvL" fill="none" stroke="#0288d1" stroke-width="2" />
+              <line x1="0" y1="142" x2="400" y2="142" stroke="#162436" stroke-width="1" />
+            </svg></div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="ch">
+          <div class="ct">IC Curves at Key Lifecycle Stages</div>
+          <div class="cb">dQ/dV vs VOLTAGE</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px" id="icgrid"></div>
+        <div style="margin-top:12px;font-size:10px;color:var(--muted);text-align:center">Red dot = peak voltage. As
+          battery degrades: peak shrinks ↓ and shifts left ←</div>
+      </div>
+      <div class="card">
+        <div class="ch">
+          <div class="ct">Why IC Analysis Matters</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;font-size:11px">
+          <div
+            style="background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.1);border-radius:10px;padding:14px">
+            <div style="font-size:16px;margin-bottom:6px">📉</div>
+            <div style="font-family:var(--fh);font-size:12px;margin-bottom:5px">Peak Height Drops</div>
+            <div style="color:var(--muted);line-height:1.6;font-size:10px">Active material loss causes the dQ/dV peak
+              to shrink. Tracks lithium inventory loss directly.</div>
+          </div>
+          <div
+            style="background:rgba(0,255,157,.04);border:1px solid rgba(0,255,157,.1);border-radius:10px;padding:14px">
+            <div style="font-size:16px;margin-bottom:6px">↔️</div>
+            <div style="font-family:var(--fh);font-size:12px;margin-bottom:5px">Peak Voltage Shifts</div>
+            <div style="color:var(--muted);line-height:1.6;font-size:10px">Electrode phase changes shift the
+              intercalation plateau — a fingerprint of cathode ageing.</div>
+          </div>
+          <div
+            style="background:rgba(255,107,53,.04);border:1px solid rgba(255,107,53,.1);border-radius:10px;padding:14px">
+            <div style="font-size:16px;margin-bottom:6px">⏰</div>
+            <div style="font-family:var(--fh);font-size:12px;margin-bottom:5px">Early Warning</div>
+            <div style="color:var(--muted);line-height:1.6;font-size:10px">IC features give 20–30 cycle early warning
+              — long before capacity drop is visible.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ DATA UPLOAD ══ -->
+    <div class="page" id="page-data">
+      <div class="upz" id="upz" ondragover="event.preventDefault();this.classList.add('dv')"
+        ondragleave="this.classList.remove('dv')" ondrop="dropFile(event)"
+        onclick="document.getElementById('fi').click()">
+        <div style="font-size:36px;margin-bottom:12px;opacity:.4">📁</div>
+        <div style="font-family:var(--fh);font-size:14px;margin-bottom:6px">Drop battery data file here</div>
+        <div style="font-size:11px;color:var(--muted)">CSV · JSON · MAT · NASA PCoE format</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:6px">Columns: cycle, voltage, current, temperature,
+          capacity</div>
+        <input type="file" id="fi" accept=".csv,.json,.mat" style="display:none" onchange="fileUp(this)" />
+      </div>
+      <div class="g2">
+        <div class="card">
+          <div class="ch">
+            <div class="ct">Expected CSV Format</div>
+            <div class="cb">TEMPLATE</div>
+          </div>
+          <div style="background:rgba(0,0,0,.4);border-radius:8px;padding:14px;font-size:10px;overflow-x:auto">
+            <code style="color:var(--green);white-space:pre">cycle,voltage,current,temperature,capacity
+1,3.01,1.50,25.3,1.989
+1,3.24,1.49,26.1,1.989
+1,3.67,1.48,27.4,1.989
+2,3.02,1.51,25.1,1.975
+2,3.25,1.50,25.9,1.975</code>
+          </div>
+          <button class="btn btn-g" style="margin-top:12px;width:100%;font-size:11px" onclick="dlTemplate()">⬇
+            Download Template</button>
+        </div>
+        <div class="card">
+          <div class="ch">
+            <div class="ct">Upload Log</div>
+          </div>
+          <div class="logp" id="uplog">
+            <div class="ll"><span class="lt">00:00</span><span class="lm i">Ready to receive data…</span></div>
+          </div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button class="btn btn-run" style="flex:1;font-size:11px" onclick="processData()">⚙ Process</button>
+            <button class="btn btn-g" style="font-size:11px" onclick="clearUp()">✕ Clear</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ RESULTS ══ -->
+    <div class="page" id="page-results">
+      <div class="sr">
+        <div class="sc">
+          <div class="sl">Test RMSE</div>
+          <div class="sv" style="color:var(--accent)">2.26</div>
+          <div class="ss">cycles</div>
+        </div>
+        <div class="sc g">
+          <div class="sl">Test MAE</div>
+          <div class="sv" style="color:var(--green)">1.75</div>
+          <div class="ss">cycles</div>
+        </div>
+        <div class="sc">
+          <div class="sl">Relative Error</div>
+          <div class="sv" style="color:var(--warn)">~2%</div>
+          <div class="ss">of battery life</div>
+        </div>
+        <div class="sc g">
+          <div class="sl">Best Epoch</div>
+          <div class="sv" style="color:var(--green)">28</div>
+          <div class="ss">of 43 total</div>
+        </div>
+      </div>
+      <div class="g2">
+        <div class="card">
+          <div class="ch">
+            <div class="ct">Mid-Life Predictions</div>
+            <div class="cb">CYCLES 50–60</div>
+          </div>
+          <div class="rscroll">
+            <table class="dt">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Actual RUL</th>
+                  <th>Predicted</th>
+                  <th>Error</th>
+                </tr>
+              </thead>
+              <tbody id="mlt"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="ch">
+            <div class="ct">Early-Life Predictions</div>
+            <div class="cb">CYCLES 1–10</div>
+          </div>
+          <div class="rscroll">
+            <table class="dt">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Actual RUL</th>
+                  <th>Predicted</th>
+                  <th>Error</th>
+                </tr>
+              </thead>
+              <tbody id="elt"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ch">
+          <div class="ct">Model Architecture</div>
+          <div class="cb">BIDIRECTIONAL LSTM</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:0;font-size:10px;overflow-x:auto;padding:8px 0">
+          <div
+            style="border:1px solid rgba(0,212,255,.3);border-radius:8px;padding:12px 14px;background:rgba(0,212,255,.05);text-align:center;flex-shrink:0">
+            <div style="color:var(--accent);font-weight:600">Input</div>
+            <div style="color:var(--muted);margin-top:3px">10×11</div>
+          </div>
+          <div style="color:var(--muted);padding:0 8px">→</div>
+          <div
+            style="border:1px solid rgba(0,212,255,.3);border-radius:8px;padding:12px 14px;background:rgba(0,212,255,.05);text-align:center;flex-shrink:0">
+            <div style="color:var(--accent);font-weight:600">Bi-LSTM</div>
+            <div style="color:var(--muted);margin-top:3px">64 units</div>
+            <div style="color:var(--muted)">38,912 params</div>
+          </div>
+          <div style="color:var(--muted);padding:0 8px">→</div>
+          <div
+            style="border:1px solid rgba(0,255,157,.3);border-radius:8px;padding:12px 14px;background:rgba(0,255,157,.05);text-align:center;flex-shrink:0">
+            <div style="color:var(--green);font-weight:600">LSTM</div>
+            <div style="color:var(--muted);margin-top:3px">32 units</div>
+            <div style="color:var(--muted)">20,608 params</div>
+          </div>
+          <div style="color:var(--muted);padding:0 8px">→</div>
+          <div
+            style="border:1px solid rgba(255,107,53,.3);border-radius:8px;padding:12px 14px;background:rgba(255,107,53,.05);text-align:center;flex-shrink:0">
+            <div style="color:var(--orange);font-weight:600">Dropout</div>
+            <div style="color:var(--muted);margin-top:3px">×2 (0.2)</div>
+          </div>
+          <div style="color:var(--muted);padding:0 8px">→</div>
+          <div
+            style="border:1px solid rgba(255,184,0,.3);border-radius:8px;padding:12px 14px;background:rgba(255,184,0,.05);text-align:center;flex-shrink:0">
+            <div style="color:var(--warn);font-weight:600">Dense 16</div>
+            <div style="color:var(--muted);margin-top:3px">ReLU</div>
+          </div>
+          <div style="color:var(--muted);padding:0 8px">→</div>
+          <div
+            style="border:1px solid rgba(0,255,157,.3);border-radius:8px;padding:12px 14px;background:rgba(0,255,157,.05);text-align:center;flex-shrink:0">
+            <div style="color:var(--green);font-weight:600">Output</div>
+            <div style="color:var(--muted);margin-top:3px">RUL (cycles)</div>
+          </div>
+        </div>
+        <div
+          style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:flex;gap:20px;font-size:10px;flex-wrap:wrap">
+          <span style="color:var(--muted)">Total params: <strong style="color:var(--text)">60,065</strong></span>
+          <span style="color:var(--muted)">Optimizer: <strong style="color:var(--text)">Adam lr=0.001</strong></span>
+          <span style="color:var(--muted)">Loss: <strong style="color:var(--text)">MSE</strong></span>
+          <span style="color:var(--muted)">Batch: <strong style="color:var(--text)">32</strong></span>
+          <span style="color:var(--muted)">Seq len: <strong style="color:var(--text)">10 cycles</strong></span>
+          <span style="color:var(--muted)">Features: <strong style="color:var(--text)">11 (incl. IC)</strong></span>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /pages -->
+  </div><!-- /main -->
+
+  <script>
+    // ── STATE ──
+    const CELLS = [{ id: 'B0005', eol: 112 }, { id: 'B0006', eol: 111 }, { id: 'B0007', eol: 105 }, { id: 'B0018', eol: 105 }];
+    const TITLES = { dashboard: 'Dashboard', predict: 'Predict RUL', analysis: 'IC Analysis', data: 'Data Upload', results: 'Results' };
+
+    // ── NAV ──
+    function go(page, el) {
+      document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+      document.querySelectorAll('.ni').forEach(n => n.classList.remove('on'));
+      document.getElementById('page-' + page).classList.add('on');
+      if (el) el.classList.add('on');
+      document.getElementById('ptitle').textContent = TITLES[page] || page;
+    }
+
+    // ── DATA HELPERS ──
+    function genDeg(eol, n = 168) {
+      const r = [];
+      for (let c = 1; c <= n; c++) {
+        const v = 2.0 * (1 - 0.0022 * c - 0.000005 * c * c) + ((Math.random() - .5) * 0.006);
+        r.push(Math.max(v, 0.5));
+      } return r;
+    }
+    function genRUL(eol, n = 158) {
+      const a = [], p = [];
+      for (let i = 0; i < n; i++) {
+        const av = Math.max(0, eol - 10 - i);
+        a.push(av); p.push(Math.max(0, av + (Math.random() - .5) * 4));
+      } return { a, p };
+    }
+    function genIC(cycle, total = 168) {
+      const pts = [];
+      const df = 1 - (cycle / total) * 0.6, sh = (cycle / total) * 0.3;
+      for (let i = 0; i < 200; i++) {
+        const v = 3.0 + 1.2 * (i / 200);
+        const pv = 3.6 - sh;
+        const ic = df * 2.2 * Math.exp(-Math.pow((v - pv) / 0.15, 2)) + 0.3 * Math.exp(-Math.pow((v - 3.2) / 0.2, 2)) + (Math.random() - .5) * 0.05;
+        pts.push({ v, ic: Math.max(ic, 0) });
+      } return pts;
+    }
+    function poly(data, xfn, yfn) { return data.map((d, i) => `${xfn(d, i)},${yfn(d, i)}`).join(' ') }
+    function polyArr(arr, W, H, ymin, ymax, px = 8, py = 8) {
+      return arr.map((v, i) => {
+        const x = px + (i / (arr.length - 1)) * (W - 2 * px);
+        const y = H - py - ((v - ymin) / (ymax - ymin || 1)) * (H - 2 * py);
+        return `${x},${Math.max(py, Math.min(H - py, y))}`;
+      }).join(' ');
+    }
+
+    // ── DRAW CHARTS ──
+    function drawDeg() {
+      const ids = ['dl0', 'dl1', 'dl2', 'dl3'];
+      CELLS.forEach((c, i) => {
+        const d = genDeg(c.eol);
+        document.getElementById(ids[i]).setAttribute('points', polyArr(d, 520, 165, 0.5, 2.05, 6, 6));
+      });
+    }
+    function drawRUL() {
+      const { a, p } = genRUL(105);
+      document.getElementById('ral').setAttribute('points', polyArr(a, 700, 132, 0, 120, 4, 4));
+      document.getElementById('rpl').setAttribute('points', polyArr(p, 700, 132, 0, 120, 4, 4));
+    }
+    function drawICtrends() {
+      const hs = [], vs = [];
+      for (let c = 1; c <= 168; c++) {
+        const d = genIC(c);
+        const pk = d.reduce((a, b) => b.ic > a.ic ? b : a);
+        hs.push(pk.ic); vs.push(pk.v);
+      }
+      document.getElementById('iphL').setAttribute('points', polyArr(hs, 400, 142, 0, 2.5, 4, 4));
+      document.getElementById('ipvL').setAttribute('points', polyArr(vs, 400, 142, 2.8, 4.2, 4, 4));
+    }
+    function drawICGrid() {
+      const grid = document.getElementById('icgrid');
+      const cycles = [1, 30, 60, 100, 140, 165];
+      const colors = ['#00ff9d', '#22dd88', '#44bb77', '#8899aa', '#cc6655', '#ff4444'];
+      grid.innerHTML = '';
+      cycles.forEach((cyc, idx) => {
+        const d = genIC(cyc);
+        const W = 280, H = 120;
+        const pts = d.map((p, i) => {
+          const x = 6 + (i / (d.length - 1)) * (W - 12);
+          const y = H - 6 - (p.ic / 2.5) * (H - 12);
+          return `${x},${Math.max(6, Math.min(H - 6, y))}`;
+        }).join(' ');
+        const pk = d.reduce((a, b) => b.ic > a.ic ? b : a);
+        const pi = d.indexOf(pk);
+        const px2 = 6 + (pi / (d.length - 1)) * (W - 12);
+        const py2 = H - 6 - (pk.ic / 2.5) * (H - 12);
+        const div = document.createElement('div');
+        div.innerHTML = `<div style="font-size:10px;color:var(--muted);margin-bottom:6px;display:flex;justify-content:space-between"><span>Cycle ${cyc}</span><span style="color:${colors[idx]}">Peak: ${pk.ic.toFixed(2)}</span></div>
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:110px"><polyline points="${pts}" fill="none" stroke="${colors[idx]}" stroke-width="2"/><circle cx="${px2}" cy="${py2}" r="4" fill="#ff3b5c"/><line x1="0" y1="${H - 4}" x2="${W}" y2="${H - 4}" stroke="#162436" stroke-width="1"/></svg>`;
+        grid.appendChild(div);
+      });
+    }
+    function drawICPreview(cycle = 30) {
+      const d = genIC(cycle);
+      const W = 300, H = 122;
+      const pts = d.map((p, i) => {
+        const x = 4 + (i / (d.length - 1)) * (W - 8);
+        const y = H - 4 - (p.ic / 2.5) * (H - 8);
+        return `${x},${Math.max(4, Math.min(H - 4, y))}`;
+      }).join(' ');
+      document.getElementById('icl').setAttribute('points', pts);
+      const pk = d.reduce((a, b) => b.ic > a.ic ? b : a);
+      const pi = d.indexOf(pk);
+      const px = 4 + (pi / (d.length - 1)) * (W - 8);
+      const py = H - 4 - (pk.ic / 2.5) * (H - 8);
+      document.getElementById('icp').setAttribute('cx', px);
+      document.getElementById('icp').setAttribute('cy', py);
+    }
+
+    // ── BATTERY VIZ ──
+    function updateBatt(cyc) {
+      cyc = parseInt(cyc);
+      const soh = Math.max(5, Math.round(100 * (1 - 0.0022 * cyc - 0.000005 * cyc * cyc)));
+      const rul = Math.max(0, 109 - cyc);
+      const fill = document.getElementById('bfill');
+      fill.style.height = soh + '%';
+      const col = soh > 80 ? 'linear-gradient(to top,#00ff9d,#00d4ff)' : soh > 65 ? 'linear-gradient(to top,#ffb800,#ff6b35)' : 'linear-gradient(to top,#ff3b5c,#ff6b35)';
+      fill.style.background = col;
+      const pc = document.getElementById('bpct');
+      pc.textContent = soh + '%';
+      pc.style.color = soh > 80 ? 'var(--green)' : soh > 65 ? 'var(--warn)' : 'var(--red)';
+      document.getElementById('brul').textContent = rul + ' cycles';
+      document.getElementById('cylab').textContent = 'CYCLE ' + cyc;
+      drawICPreview(cyc);
+    }
+
+    // ── CELL TABLE ──
+    function buildCellTable() {
+      const tb = document.getElementById('ctb');
+      tb.innerHTML = '';
+      CELLS.forEach((c, i) => {
+        const h = 78 + i * 2 + (Math.random() * 4);
+        const cap = (2.0 * (h / 100)).toFixed(3);
+        const col = h > 80 ? 'var(--green)' : h > 65 ? 'var(--warn)' : 'var(--red)';
+        const st = h > 80 ? '✓ Healthy' : h > 65 ? '⚠ Degrading' : '✕ Near EOL';
+        tb.innerHTML += `<tr>
+      <td style="color:var(--accent);font-weight:600">${c.id}</td>
+      <td>${c.eol}</td><td>${cap}</td>
+      <td><div style="display:flex;align-items:center;gap:8px"><div class="hbar"><div class="hbf" style="width:${h.toFixed(0)}%;background:${col}"></div></div><span style="font-size:10px;color:${col}">${h.toFixed(0)}%</span></div></td>
+      <td style="color:${col};font-size:10px">${st}</td>
+      <td><button class="btn btn-g" style="padding:5px 9px;font-size:10px" onclick="quickPredict(${i})">Predict</button></td>
+    </tr>`;
+      });
+    }
+    function quickPredict(i) {
+      go('predict', document.querySelectorAll('.ni')[1]);
+      document.getElementById('icy').value = 50 + i * 5;
+      document.getElementById('icap').value = (1.9 - i * 0.05).toFixed(3);
+      setTimeout(doPredict, 250);
+    }
+
+    // ── FEATURE IMPORTANCE ──
+    function buildFImp() {
+      const feats = [
+        { n: 'capacity', v: 94 }, { n: 'peak_height', v: 87 }, { n: 'peak_voltage', v: 73 },
+        { n: 'temp_mean', v: 61 }, { n: 'volt_mean', v: 55 }, { n: 'ic_mean', v: 48 }, { n: 'curr_mean', v: 39 }
+      ];
+      document.getElementById('fimp').innerHTML = feats.map(f => `
+    <div class="fb"><div class="fbr"><span style="color:var(--muted)">${f.n}</span><span>${f.v}%</span></div>
+    <div class="fbt"><div class="fbf" style="width:${f.v}%"></div></div></div>`).join('');
+    }
+
+    // ── RESULTS TABLES ──
+    function buildResults() {
+      const eol = 105;
+      ['mlt', 'elt'].forEach((id, isEarly) => {
+        const tb = document.getElementById(id);
+        tb.innerHTML = '';
+        for (let i = 0; i < 8; i++) {
+          const a = isEarly ? eol - i : eol - 50 - i;
+          const p = Math.max(0, a + (Math.random() - .5) * 4);
+          const e = a - p;
+          const col = Math.abs(e) < 3 ? 'var(--green)' : Math.abs(e) < 6 ? 'var(--warn)' : 'var(--red)';
+          tb.innerHTML += `<tr><td>${i + 1}</td><td>${a}</td><td>${p.toFixed(1)}</td><td style="color:${col}">${e > 0 ? '+' : ''}${e.toFixed(1)}</td></tr>`;
+        }
+      });
+    }
+
+    // PREDICTION
+    function doPredict() {
+      const cycle = parseFloat(document.getElementById('icy').value) || 1;
+      const cap = parseFloat(document.getElementById('icap').value) || 1.78;
+      const temp = parseFloat(document.getElementById('it').value) || 25;
+
+      const eol = 105 + Math.random() * 7;
+      const rul = Math.max(0, Math.round(eol - cycle + (cap - 1.4) * 20 - (temp - 25) * 0.3 + (Math.random() - .5) * 3));
+      const soh = Math.round((cap / 2.0) * 100);
+      const conf = Math.round(88 + Math.random() * 10);
+      showResult(
+        rul,
+        conf + '%',
+        soh + '%',
+        'Cycle ~' + Math.round(cycle + rul),
+        rul > 40 ? 'Healthy' : rul > 15 ? 'Monitor' : 'Near EOL'
+      );
+      drawICPreview(cycle);
+    }
+
+    function showResult(rul, conf, soh, eol, stat) {
+      document.getElementById('pval').textContent = rul;
+      document.getElementById('pconf').textContent = conf;
+      document.getElementById('psoh').textContent = soh;
+      document.getElementById('peol').textContent = eol;
+      document.getElementById('pstat').textContent = stat;
+      document.getElementById('po').classList.add('show');
+    }
+    function rndm() {
+      const c = Math.floor(Math.random() * 100) + 10;
+      document.getElementById('icy').value = c;
+      document.getElementById('icap').value = (2.0 - c * 0.0022 + (Math.random() - .5) * .05).toFixed(3);
+      document.getElementById('iv').value = (3.3 + Math.random() * .8).toFixed(2);
+      document.getElementById('it').value = (24 + Math.random() * 10).toFixed(1);
+      document.getElementById('itm').value = (32 + Math.random() * 8).toFixed(1);
+      document.getElementById('ic2').value = (1.2 + Math.random() * .4).toFixed(2);
+      doPredict();
+    }
+    // ── LOG ──
+    function log(id, msg, t = 'i') {
+      const p = document.getElementById(id);
+      const ts = new Date().toTimeString().slice(0, 8);
+      p.innerHTML += `<div class="ll"><span class="lt">${ts}</span><span class="lm ${t}">${msg}</span></div>`;
+      p.scrollTop = p.scrollHeight;
+    }
+    // ── FILE UPLOAD ──
+    function fileUp(inp) {
+      const f = inp.files[0]; if (!f) return;
+      log('uplog', 'Loading: ' + f.name + ' (' + Math.round(f.size / 1024) + ' KB)', 'i');
+      const rd = new FileReader();
+      rd.onload = () => log('uplog', '✓ File loaded — ready to process', 's');
+      rd.readAsText(f);
+    }
+    function dropFile(e) {
+      e.preventDefault(); document.getElementById('upz').classList.remove('dv');
+      const f = e.dataTransfer.files[0];
+      if (f) { document.getElementById('fi').files = e.dataTransfer.files; fileUp(document.getElementById('fi')); }
+    }
+    function processData() {
+      log('uplog', 'Parsing CSV…', 'i');
+      setTimeout(() => log('uplog', '✓ 168 cycles, 4 features detected', 's'), 500);
+      setTimeout(() => log('uplog', 'Computing IC curves…', 'i'), 1000);
+      setTimeout(() => log('uplog', '✓ IC features extracted', 's'), 1800);
+      setTimeout(() => log('uplog', '✓ Ready for prediction!', 's'), 2200);
+    }
+    function clearUp() {
+      document.getElementById('fi').value = '';
+      document.getElementById('uplog').innerHTML = '<div class="ll"><span class="lt">00:00</span><span class="lm i">Ready to receive data…</span></div>';
+    }
+    function dlTemplate() {
+      const csv = `cycle,voltage,current,temperature,capacity\n1,3.01,1.50,25.3,1.989\n1,3.24,1.49,26.1,1.989\n2,3.02,1.51,25.1,1.975`;
+      const a = document.createElement('a'); a.href = 'data:text/csv,' + encodeURIComponent(csv);
+      a.download = 'battery_template.csv'; a.click();
+    }
+
+    // ── INIT ──
+    window.addEventListener('DOMContentLoaded', () => {
+      drawDeg(); drawRUL(); drawICtrends(); drawICGrid(); drawICPreview(30);
+      buildCellTable(); buildFImp(); buildResults(); updateBatt(1);
+    });
+  </script>
+</body>
+
+</html>
