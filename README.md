@@ -80,7 +80,7 @@ This is the complete end-to-end system architecture for your Battery RUL predict
 ### Backend
 
 * No traditional backend framework implemented
-* Model runs via Python scripts and Google Colab Notebook
+* Model runs via Python scripts and Jupyter / google colab Notebook
 
 ---
 
